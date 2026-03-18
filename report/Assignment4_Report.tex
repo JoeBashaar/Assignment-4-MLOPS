@@ -1,0 +1,208 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{listings}
+\usepackage{courier}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Assignment 4 - GitHub Actions CI}
+\lhead{MLOps Course}
+\rfoot{Page \thepage}
+
+% Colors
+\definecolor{bugred}{RGB}{178, 34, 34}
+\definecolor{fixgreen}{RGB}{34, 139, 34}
+\definecolor{codebg}{RGB}{245, 245, 245}
+\definecolor{codeframe}{RGB}{200, 200, 200}
+
+% Listings style for YAML
+\lstdefinestyle{yamlstyle}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    rulecolor=\color{codeframe},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    xleftmargin=2em,
+    framexleftmargin=1.5em,
+    tabsize=2,
+    showstringspaces=false,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+}
+
+\title{\textbf{Assignment 4: GitHub Actions CI Pipeline}\\[0.5em]
+\large Bug Analysis \& Corrected Workflow}
+\author{Student A}
+\date{March 18, 2026}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================
+\section{Introduction}
+% ============================================================
+
+This report documents the bugs found in the provided GitHub Actions workflow file (\texttt{ml-pipeline.yml}) and the fixes applied to produce a valid, fully functional CI pipeline. The corrected pipeline runs on every push to all branches \textbf{except} \texttt{main}, installs project dependencies, runs a linter check, validates the model environment, and uploads the repository \texttt{README.md} as a GitHub Actions artifact.
+
+% ============================================================
+\section{Original (Buggy) YAML}
+% ============================================================
+
+The YAML file as originally provided is shown below. Line numbers are included for reference in the bug table.
+
+\begin{lstlisting}[style=yamlstyle, caption={Original ml-pipeline.yml (buggy)}]
+# .github/workflows/ml-pipeline.yml
+name: ML Model CI
+
+on:
+push:
+branches: main
+pull_request:
+
+jobs:
+validate-and-test:
+runs-on: ubuntu-latest
+steps:
+- name: Set up Python
+uses: actions/setup-python@v5
+with:
+python-version: '3.10'
+
+- name: Install Dependencies
+run: pip install -r requirements.txt
+
+- name: Linter Check
+
+- name: Model Dry Test
+run: |
+python -c "import torch; print('Model environment ready!')"
+\end{lstlisting}
+
+% ============================================================
+\section{Bugs Identified \& Fixes}
+% ============================================================
+
+\begin{table}[H]
+\centering
+\caption{Bug Report Summary}
+\begin{tabular}{@{}c p{4.5cm} p{6.5cm}@{}}
+\toprule
+\textbf{\#} & \textbf{Bug Description} & \textbf{Fix Applied} \\
+\midrule
+\textcolor{bugred}{\textbf{1}} &
+\textcolor{bugred}{\textbf{Missing \texttt{actions/checkout} step}} --- The workflow never checks out the repository, so files like \texttt{requirements.txt} are not available on the runner. &
+\textcolor{fixgreen}{Added a new first step:} \texttt{uses: actions/checkout@v4} before all other steps. \\
+\addlinespace
+\textcolor{bugred}{\textbf{2}} &
+\textcolor{bugred}{\textbf{Incorrect indentation under \texttt{on:}}} --- \texttt{push:} and \texttt{pull\_request:} are at the same level as \texttt{on:}, making them invalid trigger keys. &
+\textcolor{fixgreen}{Indented \texttt{push:} and \texttt{pull\_request:}} two spaces under \texttt{on:}, and \texttt{branches-ignore:} two spaces under \texttt{push:}. \\
+\addlinespace
+\textcolor{bugred}{\textbf{3}} &
+\textcolor{bugred}{\textbf{\texttt{branches: main} is not a list}} --- GitHub Actions expects \texttt{branches} to be a YAML list, not a bare string. &
+\textcolor{fixgreen}{Changed to list syntax:} \texttt{branches-ignore:} with \texttt{- main} (also satisfies the assignment requirement to exclude \texttt{main}). \\
+\addlinespace
+\textcolor{bugred}{\textbf{4}} &
+\textcolor{bugred}{\textbf{Linter Check step is empty}} --- The step has a \texttt{name:} but no \texttt{run:} or \texttt{uses:} key, causing workflow validation to fail. &
+\textcolor{fixgreen}{Added a \texttt{run:} command:} installs \texttt{flake8} and runs it with critical error selectors (\texttt{E9,F63,F7,F82}). \\
+\addlinespace
+\textcolor{bugred}{\textbf{5}} &
+\textcolor{bugred}{\textbf{Missing artifact upload step}} --- The assignment requires uploading \texttt{README.md} as a GitHub artifact named \texttt{project-doc}. &
+\textcolor{fixgreen}{Added a final step} using \texttt{actions/upload-artifact@v4} with \texttt{name: project-doc} and \texttt{path: README.md}. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ============================================================
+\section{Corrected YAML}
+% ============================================================
+
+\begin{lstlisting}[style=yamlstyle, caption={Corrected ml-pipeline.yml}]
+# .github/workflows/ml-pipeline.yml
+name: ML Model CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+
+jobs:
+  validate-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Linter Check
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Model Dry Test
+        run: |
+          python -c "import torch; print('Model environment ready!')"
+
+      - name: Upload Project Documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-doc
+          path: README.md
+\end{lstlisting}
+
+% ============================================================
+\section{GitHub Actions --- Successful Run}
+% ============================================================
+
+\subsection{Actions Tab Screenshot}
+
+\begin{figure}[H]
+\centering
+\fbox{\parbox{0.85\textwidth}{\centering\vspace{3cm}\textit{[Placeholder --- Insert screenshot of the GitHub Actions tab showing a successful (green) run here]}\vspace{3cm}}}
+\caption{GitHub Actions tab showing a successful pipeline run}
+\label{fig:actions_green}
+\end{figure}
+
+\subsection{Repository Link}
+
+The public GitHub repository for this project is available at:
+
+\vspace{0.5em}
+\noindent\url{https://github.com/YOUR_USERNAME/YOUR_REPO_NAME}
+
+\textit{(Replace with your actual repository URL.)}
+
+% ============================================================
+\section{Conclusion}
+% ============================================================
+
+Five bugs were identified and fixed in the original workflow file. The corrected pipeline:
+
+\begin{itemize}
+    \item Checks out the repository code before any other step.
+    \item Uses correct YAML indentation and list syntax for trigger configuration.
+    \item Runs on every \texttt{push} to all branches \textbf{except} \texttt{main}, and on all pull requests.
+    \item Includes a working linter check using \texttt{flake8}.
+    \item Uploads the project \texttt{README.md} as a GitHub artifact named \texttt{project-doc}.
+\end{itemize}
+
+\end{document}

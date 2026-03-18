@@ -1,0 +1,155 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{Assignment 3 - MLflow Tracking}
+\lhead{MLOps Course}
+\rfoot{Page \thepage}
+
+% Colors
+\definecolor{winnergreen}{RGB}{34, 139, 34}
+\definecolor{warningred}{RGB}{178, 34, 34}
+
+\title{\textbf{Assignment 3: Observable ML with MLflow}\\[0.5em]
+\large GAN Training Experiment Tracking \& Analysis}
+\author{Student A}
+\date{March 12, 2026}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This report documents the MLflow experiment tracking for a Vanilla GAN trained on the Fashion-MNIST dataset. Five experiments were conducted with varying hyperparameters to analyze the effect of learning rate and batch size on model convergence and stability.
+
+\section{Experiment Configuration}
+
+\begin{table}[H]
+\centering
+\caption{Hyperparameter Configurations for 5 Runs}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+\textbf{Run} & \textbf{Learning Rate} & \textbf{Batch Size} & \textbf{Epochs} & \textbf{Latent Dim} \\
+\midrule
+1 & 0.0002 & 512 & 5 & 100 \\
+2 & 0.001  & 512 & 5 & 100 \\
+3 & 0.0001 & 512 & 5 & 100 \\
+4 & 0.0002 & 256 & 5 & 100 \\
+5 & 0.0002 & 128 & 5 & 100 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{MLflow Screenshots}
+
+\subsection{Table View - All 5 Runs Sorted by Accuracy}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{image.png}
+\caption{MLflow Table View showing all 5 experiment runs sorted by Discriminator Accuracy}
+\label{fig:table_view}
+\end{figure}
+
+\subsection{Comparison View - Loss/Accuracy Curves}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{runs compare.png}
+\caption{MLflow Comparison View showing training curves for multiple runs}
+\label{fig:comparison_view}
+\end{figure}
+
+\subsection{Artifact Gallery - Saved Model \& Environment Files}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{artifact.png}
+\caption{MLflow Artifacts tab showing saved Generator model and environment files}
+\label{fig:artifacts}
+\end{figure}
+
+\section{Results Summary}
+
+\begin{table}[H]
+\centering
+\caption{Final Metrics for All Runs}
+\begin{tabular}{@{}ccccl@{}}
+\toprule
+\textbf{Run} & \textbf{Final D\_Loss} & \textbf{Final G\_Loss} & \textbf{Final D\_Acc} & \textbf{Notes} \\
+\midrule
+\textcolor{winnergreen}{\textbf{1}} & \textcolor{winnergreen}{\textbf{0.1238}} & \textcolor{winnergreen}{\textbf{3.70}} & \textcolor{winnergreen}{\textbf{99.5\%}} & \textcolor{winnergreen}{\textbf{Winner}} \\
+2 & 0.0051 & 8.89 & 99.5\% & Unstable G\_loss \\
+3 & 0.0644 & 3.94 & 98.9\% & Slower convergence \\
+4 & 0.0526 & 6.69 & 99.6\% & Good accuracy \\
+5 & 0.0989 & 6.94 & 98.9\% & More variance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Analysis}
+
+\subsection{Winner: Run 1 (lr=0.0002, batch\_size=512)}
+
+\textbf{Run 1} is the clear winner for the following reasons:
+
+\begin{enumerate}
+    \item \textbf{Lowest Generator Loss (3.70):} Among all runs, Run 1 achieved the lowest final generator loss, indicating the generator learned to produce images that effectively fool the discriminator.
+    
+    \item \textbf{Balanced GAN Equilibrium:} The discriminator loss (0.1238) and accuracy (99.5\%) suggest a healthy adversarial balance. The discriminator is neither too strong (which would starve the generator) nor too weak (which would lead to mode collapse).
+    
+    \item \textbf{Stable Training:} Unlike Run 2 (high learning rate), Run 1 showed consistent, monotonic improvement without erratic spikes in the loss curves.
+\end{enumerate}
+
+\subsection{Evidence of Training Issues}
+
+\subsubsection{Run 2 - Unstable Training (High Learning Rate)}
+\textcolor{warningred}{\textbf{Warning:}} Run 2 (lr=0.001) exhibited severe instability:
+\begin{itemize}
+    \item Generator loss spiked to \textbf{67.8} during Epoch 2 before recovering
+    \item Final G\_loss of 8.89 is more than 2x higher than Run 1
+    \item This is classic evidence of \textbf{learning rate being too high} for GAN training
+\end{itemize}
+
+\subsubsection{Run 3 - Slower Convergence (Low Learning Rate)}
+Run 3 (lr=0.0001) showed:
+\begin{itemize}
+    \item More gradual loss decrease (smoother curves)
+    \item Slightly lower final accuracy (98.9\%)
+    \item Would likely improve with more epochs, but converges slower
+\end{itemize}
+
+\subsection{Overfitting/Underfitting Analysis}
+
+\begin{itemize}
+    \item \textbf{No clear overfitting observed:} GANs don't have a traditional train/validation split, but the discriminator accuracies plateauing near 99\% without diverging losses suggest healthy training.
+    
+    \item \textbf{Potential mode collapse indicators:} Very high discriminator accuracy (99.5\%+) combined with high generator loss could indicate mode collapse. Run 2's pattern (D\_acc=99.5\%, G\_loss=8.89) warrants investigation of generated sample diversity.
+    
+    \item \textbf{Underfitting in Run 3:} The lower learning rate resulted in the model not fully converging within 5 epochs, suggesting underfitting that could be resolved with longer training.
+\end{itemize}
+
+\section{Conclusion}
+
+MLflow proved invaluable for tracking and comparing GAN experiments. The baseline configuration (lr=0.0002, batch\_size=512) emerged as optimal, demonstrating that:
+
+\begin{itemize}
+    \item GAN training is highly sensitive to learning rate (Run 2's instability)
+    \item Batch size had less impact than learning rate in this experiment
+    \item Observable ML practices enable data-driven hyperparameter decisions
+\end{itemize}
+
+\vspace{1em}
+\noindent\textbf{Experiment tracked at:} \url{http://localhost:5000/#/experiments/1}
+
+\end{document}
