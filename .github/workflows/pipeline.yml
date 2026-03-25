@@ -24,12 +24,26 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install scikit-learn dvc
+        run: pip install -r requirements.txt
 
       - name: Pull Data with DVC
         run: dvc pull
+        continue-on-error: true
+
+      - name: Download Dataset (fallback)
+        run: |
+          if [ ! -f fashion-mnist_train.csv ]; then
+            python -c "
+          import torchvision, pandas as pd, numpy as np
+          ds = torchvision.datasets.FashionMNIST(root='./tmp', train=True, download=True)
+          imgs = ds.data.numpy().reshape(-1, 784)
+          labels = ds.targets.numpy()
+          df = pd.DataFrame(imgs, columns=[f'pixel{i+1}' for i in range(784)])
+          df.insert(0, 'label', labels)
+          df.to_csv('fashion-mnist_train.csv', index=False)
+          print(f'Downloaded {len(df)} samples')
+          "
+          fi
 
       - name: Train Model
         env:
@@ -59,9 +73,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install scikit-learn dvc
+        run: pip install -r requirements.txt
 
       - name: Download model_info.txt
         uses: actions/download-artifact@v4
