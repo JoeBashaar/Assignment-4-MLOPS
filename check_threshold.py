@@ -8,7 +8,7 @@ import os
 import sys
 import mlflow
 
-THRESHOLD = 85.0  # train_gan.py logs accuracy as a percentage (0-100)
+THRESHOLD = 99.0  # Temporarily set high to force failure
 
 # ── MLflow Setup ──
 tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or "sqlite:///mlflow.db"
