@@ -4,7 +4,7 @@ name: ML Validation & Deployment Pipeline
 on:
   push:
     branches:
-      - main
+      - dev
   pull_request:
 
 jobs:
