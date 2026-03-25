@@ -29,7 +29,9 @@ jobs:
           pip install dvc
 
       - name: Pull Data with DVC
-        run: dvc pull
+        run: |
+          dvc init --no-scm
+          dvc pull
         continue-on-error: true
 
       - name: Download Dataset (fallback)
@@ -50,25 +52,17 @@ jobs:
       - name: Train Model
         run: python train_gan.py
 
-      - name: Verify MLflow Data
-        run: |
-          echo "=== model_info.txt ==="
-          cat model_info.txt
-          echo ""
-          echo "=== mlruns structure ==="
-          find mlruns -maxdepth 3 -type d
-
       - name: Upload model_info.txt
         uses: actions/upload-artifact@v4
         with:
           name: model-info
           path: model_info.txt
 
-      - name: Upload MLflow Data
+      - name: Upload MLflow Database
         uses: actions/upload-artifact@v4
         with:
-          name: mlflow-data
-          path: mlruns/
+          name: mlflow-db
+          path: mlflow.db
 
   # ──────────────────────────────────────
   # Job 2: Deploy — Check threshold & mock build
@@ -94,19 +88,10 @@ jobs:
         with:
           name: model-info
 
-      - name: Download MLflow Data
+      - name: Download MLflow Database
         uses: actions/download-artifact@v4
         with:
-          name: mlflow-data
-          path: mlruns/
-
-      - name: Verify MLflow Data
-        run: |
-          echo "=== model_info.txt ==="
-          cat model_info.txt
-          echo ""
-          echo "=== mlruns structure ==="
-          find mlruns -maxdepth 3 -type d
+          name: mlflow-db
 
       - name: Check Accuracy Threshold
         run: python check_threshold.py

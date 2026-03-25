@@ -20,7 +20,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # ── MLflow Setup ──
-tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or "./mlruns"
+tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or "sqlite:///mlflow.db"
 mlflow.set_tracking_uri(tracking_uri)
 mlflow.set_experiment("Assignment3_GAN_StudentA")
 
