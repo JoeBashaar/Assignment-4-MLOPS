@@ -56,6 +56,12 @@ jobs:
           name: model-info
           path: model_info.txt
 
+      - name: Upload MLflow Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-data
+          path: mlruns/
+
   # ──────────────────────────────────────
   # Job 2: Deploy — Check threshold & mock build
   # ──────────────────────────────────────
@@ -79,6 +85,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: model-info
+
+      - name: Download MLflow Data
+        uses: actions/download-artifact@v4
+        with:
+          name: mlflow-data
+          path: mlruns/
 
       - name: Check Accuracy Threshold
         env:
