@@ -24,7 +24,9 @@ jobs:
           python-version: "3.10"
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install dvc
 
       - name: Pull Data with DVC
         run: dvc pull
@@ -46,9 +48,15 @@ jobs:
           fi
 
       - name: Train Model
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: python train_gan.py
+
+      - name: Verify MLflow Data
+        run: |
+          echo "=== model_info.txt ==="
+          cat model_info.txt
+          echo ""
+          echo "=== mlruns structure ==="
+          find mlruns -maxdepth 3 -type d
 
       - name: Upload model_info.txt
         uses: actions/upload-artifact@v4
@@ -92,9 +100,15 @@ jobs:
           name: mlflow-data
           path: mlruns/
 
+      - name: Verify MLflow Data
+        run: |
+          echo "=== model_info.txt ==="
+          cat model_info.txt
+          echo ""
+          echo "=== mlruns structure ==="
+          find mlruns -maxdepth 3 -type d
+
       - name: Check Accuracy Threshold
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: python check_threshold.py
 
       - name: Mock Docker Build
