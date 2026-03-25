@@ -112,7 +112,7 @@ for run_idx, cfg in enumerate(configs, 1):
     opt_D = torch.optim.Adam(D.parameters(), lr=LR)
     loader = DataLoader(TensorDataset(X_tensor), batch_size=BATCH_SIZE, shuffle=True)
 
-    with mlflow.start_run(run_name=f"run_{run_idx}_lr{LR}_bs{BATCH_SIZE}"):
+    with mlflow.start_run(run_name=f"run_{run_idx}_lr{LR}_bs{BATCH_SIZE}") as run:
         mlflow.log_param("learning_rate", LR)
         mlflow.log_param("batch_size", BATCH_SIZE)
         mlflow.log_param("epochs", EPOCHS)
@@ -170,4 +170,10 @@ for run_idx, cfg in enumerate(configs, 1):
         mlflow.pytorch.log_model(G, "generator_model")
         print(f"  ✓ Run {run_idx} logged to MLflow")
 
+        # Export Run ID for the pipeline
+        with open("model_info.txt", "w") as f:
+            f.write(run.info.run_id)
+
 print("\n✅ All 5 runs completed and logged to MLflow!")
+print(f"✅ model_info.txt written with last Run ID")
+
