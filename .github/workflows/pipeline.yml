@@ -45,7 +45,7 @@ jobs:
     needs: linter
     if: contains(github.event.head_commit.message, '[run-train]')
 
-    steps:
+    steps: 
       - name: Checkout Repository
         uses: actions/checkout@v4
 
