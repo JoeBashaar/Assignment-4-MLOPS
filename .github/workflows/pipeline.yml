@@ -4,15 +4,46 @@ name: ML Validation & Deployment Pipeline
 on:
   push:
     branches:
-      - dev
+      - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   # ──────────────────────────────────────
-  # Job 1: Validate — Train & log to MLflow
+  # Job 1: Linter — Lightweight checks
   # ──────────────────────────────────────
-  validate:
+  linter:
     runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Linter Check
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Model Dry Test
+        run: |
+          python -c "import torch; print('Model environment ready!')"
+
+  # ──────────────────────────────────────
+  # Job 2: Train — Expensive GPU job with conditions
+  # ──────────────────────────────────────
+  train:
+    runs-on: ubuntu-latest
+    needs: linter
+    if: contains(github.event.head_commit.message, '[run-train]')
 
     steps:
       - name: Checkout Repository
@@ -64,12 +95,32 @@ jobs:
           name: mlflow-db
           path: mlflow.db
 
+      - name: On Failure - Upload Error Logs
+        if: failure()
+        run: |
+          echo "Training failed. Capturing error logs..." > error_logs.txt
+          echo "Job: ${{ github.job }}" >> error_logs.txt
+          echo "Run ID: ${{ github.run_id }}" >> error_logs.txt
+          echo "Commit: ${{ github.sha }}" >> error_logs.txt
+          # Add more logs if available
+
+      - name: Upload Error Logs Artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: error-logs
+          path: error_logs.txt
+
+      - name: Cleanup
+        if: always()
+        run: echo "Cleaning up temporary cloud volumes..."
+
   # ──────────────────────────────────────
-  # Job 2: Deploy — Check threshold & mock build
+  # Job 3: Deploy — Check threshold & mock build
   # ──────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
-    needs: validate
+    needs: train
 
     steps:
       - name: Checkout Repository

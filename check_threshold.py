@@ -8,7 +8,7 @@ import os
 import sys
 import mlflow
 
-THRESHOLD = 99.9  # Temporarily set high to force failure
+THRESHOLD = 99.9 
 
 # ── MLflow Setup ──
 tracking_uri = os.environ.get("MLFLOW_TRACKING_URI") or "sqlite:///mlflow.db"
